@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lua + LOVE2D — Crie Seu Primeiro Jogo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a12;
+    --bg2: #10101e;
+    --bg3: #16162a;
+    --accent: #e84393;
+    --accent2: #7b5ea7;
+    --accent3: #00d4a0;
+    --yellow: #f9e04b;
+    --text: #f0eeff;
+    --muted: #9090b0;
+    --border: rgba(255,255,255,0.08);
+    --card: rgba(255,255,255,0.04);
+    --pixel: 3px;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* === PIXEL GRID BG === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(123,94,167,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(123,94,167,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* === SCANLINES === */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* === NAV === */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,18,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0;
+  }
+  nav .inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+  }
+  .nav-logo {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent3);
+    letter-spacing: 0.05em;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* === HERO === */
+  .hero {
+    padding: 90px 0 60px;
+    position: relative;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid rgba(0,212,160,0.25);
+    background: rgba(0,212,160,0.06);
+    padding: 6px 14px;
+    margin-bottom: 28px;
+  }
+  .hero-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--accent3);
+    animation: blink 1.2s step-start infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  h1 {
+    font-size: clamp(42px, 8vw, 80px);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .h1-lua { color: var(--yellow); }
+  .h1-plus {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 0.55em;
+    margin: 0 6px;
+  }
+  .h1-love { color: var(--accent); }
+
+  .hero-sub {
+    font-size: clamp(22px, 4vw, 34px);
+    font-weight: 600;
+    color: var(--text);
+    opacity: 0.85;
+    margin-bottom: 20px;
+    margin-top: 6px;
+    line-height: 1.2;
+  }
+
+  .hero-desc {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--muted);
+    max-width: 520px;
+    line-height: 1.8;
+    margin-bottom: 40px;
+  }
+
+  .hero-cta-group {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    text-decoration: none;
+    border: 2px solid var(--accent);
+    transition: background 0.18s, transform 0.12s;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .btn-primary:hover {
+    background: transparent;
+    color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: color 0.18s, border-color 0.18s;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+  /* === PIXEL ART DECORATIONS === */
+  .pixel-art {
+    position: absolute;
+    right: 0;
+    top: 60px;
+    opacity: 0.18;
+    pointer-events: none;
+  }
+
+  /* === STATS BAR === */
+  .stats-bar {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .stat-item {
+    text-align: center;
+    padding: 12px;
+    position: relative;
+  }
+  .stat-item + .stat-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: var(--border);
+  }
+  .stat-number {
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--yellow);
+    font-family: var(--font-mono);
+    display: block;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* === SECTION TITLE === */
+  .section { padding: 72px 0; position: relative; z-index: 1; }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::before {
+    content: '//';
+    color: var(--accent2);
+  }
+
+  h2 {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .section-intro {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--muted);
+    max-width: 560px;
+    line-height: 1.9;
+    margin-bottom: 48px;
+  }
+
+  /* === ABOUT === */
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 600px) { .about-grid { grid-template-columns: 1fr; } }
+
+  .about-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .about-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+  }
+  .about-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  .about-card p {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.85;
+  }
+  .about-card .card-icon {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  /* === TOPICS === */
+  .topics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .topic-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+  .topic-item:hover {
+    border-color: rgba(123,94,167,0.4);
+  }
+  .topic-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent2);
+    min-width: 28px;
+    padding-top: 2px;
+  }
+  .topic-content h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .topic-content p {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* === ORG === */
+  .org-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 40px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 32px;
+    align-items: start;
+    position: relative;
+    overflow: hidden;
+  }
+  .org-block::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(123,94,167,0.12), transparent 70%);
+    pointer-events: none;
+  }
+  @media (max-width: 600px) {
+    .org-block { grid-template-columns: 1fr; }
+  }
+  .org-avatar {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .org-name {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .org-desc {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.9;
+  }
+  .org-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(123,94,167,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(123,94,167,0.25);
+    padding: 3px 10px;
+    margin: 12px 6px 0 0;
+  }
+
+  /* === LINKS / CTA === */
+  .links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-top: 40px;
+  }
+  .link-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 24px 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.2s, transform 0.15s;
+    position: relative;
+  }
+  .link-card:hover {
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-3px);
+  }
+  .link-card::after {
+    content: '→';
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 16px;
+    color: var(--muted);
+    transition: color 0.2s, right 0.2s;
+  }
+  .link-card:hover::after { color: var(--text); right: 16px; }
+
+  .link-card.primary-link { border-color: rgba(232,67,147,0.3); }
+  .link-card.primary-link::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .link-icon {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid var(--border);
+  }
+  .link-icon.pink { background: rgba(232,67,147,0.1); border-color: rgba(232,67,147,0.2); }
+  .link-icon.purple { background: rgba(123,94,167,0.1); border-color: rgba(123,94,167,0.2); }
+  .link-icon.teal { background: rgba(0,212,160,0.1); border-color: rgba(0,212,160,0.2); }
+  .link-icon.yellow { background: rgba(249,224,75,0.1); border-color: rgba(249,224,75,0.2); }
+
+  .link-card h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .link-card p {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* === FOOTER === */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    position: relative;
+    z-index: 1;
+  }
+  footer .inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer p {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  footer span { color: var(--accent); }
+
+  /* === DIVIDER === */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  /* === PIXEL DECORATION SVG === */
+  .hero-pixels {
+    position: absolute;
+    right: -20px;
+    top: 40px;
+    pointer-events: none;
+    opacity: 0.22;
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+
+  /* === HIGHLIGHT === */
+  .highlight { color: var(--accent3); }
+  .highlight-pink { color: var(--accent); }
+  .highlight-yellow { color: var(--yellow); }
+
+  /* === MOBILE NAV === */
+  @media (max-width: 500px) {
+    .nav-links { display: none; }
+    .org-desc { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <div class="nav-logo"><span>❤️</span> lua<span>+</span>love2d</div>
+    <ul class="nav-links">
+      <li><a href="#sobre">Sobre</a></li>
+      <li><a href="#topicos">Tópicos</a></li>
+      <li><a href="#comunidade">Comunidade</a></li>
+      <li><a href="#inscricao">Inscrição</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+
+    <!-- pixel decoration -->
+    <svg class="hero-pixels" width="220" height="280" viewBox="0 0 220 280" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- little spaceship / character pixel art -->
+      <rect x="90" y="10" width="40" height="10" fill="#f9e04b"/>
+      <rect x="80" y="20" width="60" height="10" fill="#f9e04b"/>
+      <rect x="70" y="30" width="80" height="10" fill="#e84393"/>
+      <rect x="60" y="40" width="100" height="20" fill="#e84393"/>
+      <rect x="50" y="60" width="120" height="10" fill="#7b5ea7"/>
+      <rect x="40" y="70" width="140" height="10" fill="#7b5ea7"/>
+      <rect x="60" y="80" width="40" height="10" fill="#00d4a0"/>
+      <rect x="120" y="80" width="40" height="10" fill="#00d4a0"/>
+      <!-- stars -->
+      <rect x="10" y="130" width="6" height="6" fill="#f9e04b" opacity="0.9"/>
+      <rect x="190" y="80" width="4" height="4" fill="#e84393" opacity="0.8"/>
+      <rect x="30" y="200" width="8" height="8" fill="#7b5ea7" opacity="0.7"/>
+      <rect x="170" y="170" width="6" height="6" fill="#00d4a0" opacity="0.9"/>
+      <rect x="5" y="50" width="4" height="4" fill="#f9e04b" opacity="0.5"/>
+      <rect x="200" y="230" width="6" height="6" fill="#e84393" opacity="0.6"/>
+      <!-- beams -->
+      <rect x="88" y="90" width="8" height="30" fill="#00d4a0" opacity="0.6"/>
+      <rect x="124" y="90" width="8" height="30" fill="#00d4a0" opacity="0.6"/>
+      <rect x="92" y="120" width="4" height="20" fill="#e84393" opacity="0.5"/>
+      <rect x="124" y="120" width="4" height="20" fill="#e84393" opacity="0.5"/>
+    </svg>
+
+    <div class="hero-badge">Inscrições abertas — turma 2025</div>
+
+    <h1>
+      <span class="h1-lua">Lua</span>
+      <span class="h1-plus">+</span>
+      <span class="h1-love">LOVE2D</span>
+    </h1>
+    <div class="hero-sub">Do zero ao seu primeiro jogo.</div>
+
+    <p class="hero-desc">
+      Aprenda a programar criando jogos reais — sem enrolação, sem pré-requisitos, só código e criatividade. Lua é simples, poderosa e usada em jogos como <span style="color:var(--text)">Roblox</span> e <span style="color:var(--text)">Angry Birds</span>.
+    </p>
+
+    <div class="hero-cta-group">
+      <a href="#inscricao" class="btn-primary">
+        ▶&nbsp; Quero me inscrever
+      </a>
+      <a href="#topicos" class="btn-ghost">
+        Ver o conteúdo →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar" style="position: relative; z-index: 1;">
+  <div class="container" style="display: contents;">
+    <div class="stat-item">
+      <span class="stat-number">100%</span>
+      <span class="stat-label">gratuito</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number">0</span>
+      <span class="stat-label">pré-requisitos</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number">∞</span>
+      <span class="stat-label">criatividade</span>
+    </div>
+  </div>
+</div>
+
+<!-- SOBRE O CURSO -->
+<section class="section" id="sobre">
+  <div class="container">
+    <div class="section-label">Sobre o curso</div>
+    <h2>O que você vai <span class="highlight-pink">aprender</span>?</h2>
+    <p class="section-intro">
+      Um curso prático de desenvolvimento de jogos 2D com a linguagem Lua e o framework LOVE2D. Pensado para quem está começando a programar — ou quer aprender de um jeito diferente: fazendo.
+    </p>
+
+    <div class="about-grid">
+      <div class="about-card">
+        <div class="card-icon">🎮</div>
+        <h3>Aprenda programando jogos</h3>
+        <p>Nada de exemplos chatos. Desde a primeira aula você vai estar construindo algo que funciona e que você pode jogar — e mostrar pra galera.</p>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">🧠</div>
+        <h3>Conceitos que ficam</h3>
+        <p>Lógica, funções, estruturas de dados e orientação a objetos — tudo apresentado no contexto de jogos. Você vai entender o porquê das coisas.</p>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">🤝</div>
+        <h3>Comunidade ativa</h3>
+        <p>Tire dúvidas, compartilhe seu progresso e conheça outros devs. Aprender junto é muito mais divertido do que aprender sozinho.</p>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">🚀</div>
+        <h3>Porta de entrada pro dev</h3>
+        <p>Lua é leve, rápida de aprender e abre portas para jogos, automações, mods e muito mais. Um ótimo primeiro passo na programação.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- TÓPICOS -->
+<section class="section" id="topicos">
+  <div class="container">
+    <div class="section-label">Conteúdo programático</div>
+    <h2>O que você vai <span class="highlight">ver</span> no curso</h2>
+    <p class="section-intro">
+      Do básico de programação até mecânicas de jogo funcionando. Cada módulo entrega algo jogável.
+    </p>
+
+    <div class="topics-grid">
+
+      <div class="topic-item">
+        <span class="topic-num">01</span>
+        <div class="topic-content">
+          <h4>Introdução à linguagem Lua</h4>
+          <p>Variáveis, tipos, operadores e o terminal do amor: o print().</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">02</span>
+        <div class="topic-content">
+          <h4>Controle de fluxo</h4>
+          <p>if/else, loops, funções — a lógica que faz o jogo funcionar.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">03</span>
+        <div class="topic-content">
+          <h4>Tabelas e estruturas</h4>
+          <p>A estrutura de dados mais poderosa de Lua. Você vai amar.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">04</span>
+        <div class="topic-content">
+          <h4>Primeiros passos com LOVE2D</h4>
+          <p>love.load, love.update, love.draw — o loop que move tudo.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">05</span>
+        <div class="topic-content">
+          <h4>Gráficos e sprites</h4>
+          <p>Desenhar formas, carregar imagens e animar personagens.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">06</span>
+        <div class="topic-content">
+          <h4>Input do jogador</h4>
+          <p>Teclado, mouse e controles — respondendo às ações do usuário.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">07</span>
+        <div class="topic-content">
+          <h4>Física e colisão</h4>
+          <p>Como fazer objetos interagirem — do simples ao complexo.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">08</span>
+        <div class="topic-content">
+          <h4>Sons e música</h4>
+          <p>Adicionar efeitos sonoros e trilha para deixar o jogo vivo.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">09</span>
+        <div class="topic-content">
+          <h4>Game states e menus</h4>
+          <p>Telas de início, game over e pausa — como um jogo de verdade.</p>
+        </div>
+      </div>
+
+      <div class="topic-item">
+        <span class="topic-num">10</span>
+        <div class="topic-content">
+          <h4>Projeto final</h4>
+          <p>Crie seu próprio jogo do zero, do conceito ao executável.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ORGANIZAÇÃO -->
+<section class="section" id="comunidade">
+  <div class="container">
+    <div class="section-label">Quem faz acontecer</div>
+    <h2>Sobre a <span class="highlight-yellow">organização</span></h2>
+    <p class="section-intro">Conheça quem está por trás do curso.</p>
+
+    <div class="org-block">
+      <div class="org-avatar">ORG</div>
+      <div>
+        <div class="org-name">Nome da Organização</div>
+        <p class="org-desc">
+          Breve descrição sobre a organização responsável pelo curso — sua missão, área de atuação e por que escolheu tornar o aprendizado de desenvolvimento de jogos mais acessível para estudantes brasileiros.<br><br>
+          Coloque aqui um parágrafo contando a história, os valores e o que move a equipe. Seja autêntico — os alunos conectam com pessoas reais.
+        </p>
+        <div>
+          <span class="org-tag">Educação</span>
+          <span class="org-tag">Open Source</span>
+          <span class="org-tag">Game Dev</span>
+          <span class="org-tag">Comunidade</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- LINKS / CTA -->
+<section class="section" id="inscricao">
+  <div class="container">
+    <div class="section-label">Bora começar?</div>
+    <h2>Entre na <span class="highlight-pink">comunidade</span></h2>
+    <p class="section-intro">
+      Inscreva-se no curso, entre no nosso Discord, e nos acompanhe nas redes. A jornada começa aqui.
+    </p>
+
+    <div class="links-grid">
+
+      <a href="#" class="link-card primary-link">
+        <div class="link-icon pink">📝</div>
+        <div>
+          <h4>Inscrição</h4>
+          <p>Garanta sua vaga gratuitamente</p>
+        </div>
+      </a>
+
+      <a href="#" class="link-card">
+        <div class="link-icon purple">💬</div>
+        <div>
+          <h4>Discord</h4>
+          <p>Nossa comunidade de alunos e devs</p>
+        </div>
+      </a>
+
+      <a href="#" class="link-card">
+        <div class="link-icon pink" style="background: rgba(232,67,147,0.08);">📸</div>
+        <div>
+          <h4>Instagram</h4>
+          <p>Novidades, dicas e bastidores</p>
+        </div>
+      </a>
+
+      <a href="#" class="link-card">
+        <div class="link-icon yellow">▶️</div>
+        <div>
+          <h4>YouTube</h4>
+          <p>Aulas e conteúdo gratuito</p>
+        </div>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="inner">
+    <p>Feito com <span>❤️</span> para a comunidade — 2025</p>
+    <p style="font-family: var(--font-mono); font-size: 11px; color: var(--muted);">
+      print("olá, mundo!") — Lua + LOVE2D
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
